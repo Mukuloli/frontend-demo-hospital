@@ -1,0 +1,17 @@
+.env
+.env.*
+*.env
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+*.log
+logs/
+playwright-report/
+test-results/
+secrets/
+*.pem
+*.key
+firebase-admin*.json
+*service-account*.json
