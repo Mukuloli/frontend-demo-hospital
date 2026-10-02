@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Send, Loader2, Bot, User, MessageSquare, X } from "lucide-react";
+import { restoreGoogleSignIn } from "@/lib/firebase";
 
 const ADK_URL = process.env.NEXT_PUBLIC_ADK_URL || "http://127.0.0.1:8001";
 
@@ -52,25 +53,37 @@ export default function ChatPanel({ token }: Props) {
     setMessages((m) => [...m, { role: "user", text, time: now() }]);
     setLoading(true);
     try {
-      const res = await fetch(`${ADK_URL}/chat`, {
+      let requestToken = token;
+      if (token.split(".").length === 3) {
+        const restored = await restoreGoogleSignIn();
+        if (restored) requestToken = restored.token;
+      }
+      const res = await fetch(`${ADK_URL.replace(/\/$/, "")}/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${requestToken}`,
         },
         body: JSON.stringify({ message: text, session_id: sessionId }),
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(60000),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error((err as { detail?: string }).detail || `Error ${res.status}`);
+        const detail = (err as { detail?: unknown }).detail;
+        throw new Error(res.status === 401
+          ? "Your sign-in has expired. Please sign in again."
+          : typeof detail === "string" ? detail : "Noor could not respond right now. Please try again.");
       }
       const data = await res.json() as { reply: string };
       setMessages((m) => [...m, { role: "assistant", text: data.reply, time: now() }]);
-    } catch {
+    } catch (error) {
       setMessages((m) => [...m, {
         role: "assistant",
-        text: `Sorry, couldn't reach booking server. Make sure noor-adk server is running on port 8001.`,
+        text: error instanceof TypeError
+          ? "Cannot reach the booking service. Please try again in a moment."
+          : error instanceof DOMException && error.name === "TimeoutError"
+            ? "Noor took too long to respond. Please try again."
+            : error instanceof Error ? error.message : "Noor could not respond right now. Please try again.",
         time: now(),
       }]);
     } finally {
@@ -108,7 +121,7 @@ export default function ChatPanel({ token }: Props) {
                 <span className="chat-name">Noor</span>
                 <span className="chat-status">
                   <span className="chat-online-dot" />
-                  Book via text · ADK
+                  Book via text
                 </span>
               </div>
             </div>
