@@ -8,6 +8,7 @@ import { googleSignIn, restoreGoogleSignIn, signOutGoogle } from "@/lib/firebase
 import type { Recognition } from "@/lib/speech";
 
 const LiveCall = dynamic(() => import("@/components/live-call"), { ssr: false });
+const ChatPanel = dynamic(() => import("@/components/chat-panel"), { ssr: false });
 type Config = { auth_mode: string; livekit_configured: boolean; voice_pipeline: string; booking_mode: "local_demo" | "firestore" | "firestore_calendar"; calendar_invitations_enabled: boolean; clinic_timezone: string; doctors: { id: string }[] };
 type Appointment = { id: string; doctor_id: string; start: string; reason: string; status: string; client_name?: string; phone_number?: string; client_email?: string; calendar_html_link?: string; calendar_invitation_status?: string };
 type Slot = { start: string; end: string; label: string };
@@ -343,6 +344,7 @@ export default function Home() {
             {availSlots.map(s => <span key={s.start} className="avail-slot"><Clock3 size={13} /> {s.label}</span>)}
           </div> : <p className="avail-empty">No available slots on this date.</p>)}
         </article>}
+
         <article className="appointments-card" id="appointments"><div className="section-heading"><h2>My appointments</h2><button className="text-button" onClick={() => void refreshAppointments()} disabled={!token}>Refresh <ArrowDown size={12} /></button></div>
           {appointments.length ? <div className="appointment-list">{appointments.map(a => <div className="appointment" key={a.id}><span className="appointment-icon"><CalendarDays size={19} /></span><div><h3>{a.reason}</h3><p>{a.client_name || "Clinic appointment"}{a.phone_number ? ` · ${a.phone_number}` : ""}</p><span>{new Intl.DateTimeFormat("en-GB", { timeZone: config?.clinic_timezone || "Asia/Dubai", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(a.start))} · Dubai</span>{a.calendar_html_link && <a className="calendar-link" href={a.calendar_html_link} target="_blank" rel="noreferrer">Open Google Calendar event</a>}{a.calendar_invitation_status === "failed" && <span>Calendar invitation could not be sent.</span>}</div><span className="booking-check"><Check size={13} /></span></div>)}</div> : <div className="appointments-empty"><span className="calendar-outline"><CalendarDays size={26} strokeWidth={1.2} /></span><h3>A little space for your next visit.</h3><p>{token ? (realBooking ? "Your confirmed appointments will appear here on this browser." : "Your confirmed demo appointments will appear here.") : "Start a conversation to see and arrange your appointments."}</p></div>}
           <div className="timezone-note"><Clock3 size={13} /> All appointment times are in Dubai (GMT+4)</div>
@@ -350,5 +352,6 @@ export default function Home() {
       </section>
       <footer><span className="footer-brand">noor.</span><p>A little more human. A little less hassle.</p><span><span className={`footer-dot ${config ? "connected" : ""}`} />{config ? (realBooking ? "Appointment care · Dubai" : "Local voice demo · Dubai") : "Connecting to Python service"}</span></footer>
     </main>
+    {token && <ChatPanel token={token} />}
   </div>;
 }
